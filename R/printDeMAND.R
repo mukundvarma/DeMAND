@@ -20,5 +20,8 @@ printDeMAND <- function(x) {
         message("Slot moa (head):")
         if (length(x@moa)>0) print(head(x@moa), row.names=FALSE)
         else message("\tEmpty")
-        }
+        message("Slot KLD (head):")
+        if (dim(x@KLD)[1]>0) print(head(x@KLD), row.names=FALSE) 
+        else message("\tEmpty")
+}
 

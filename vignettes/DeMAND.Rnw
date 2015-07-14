@@ -69,9 +69,9 @@ printDeMAND(dobj)
 
 Here are some information and the requirements for you to generate a \emph{demand} object and to run the \texttt{runDeMAND()} function.
 \begin{description}
-\item[exp]{A N by M numeric matrix and the rows are N probes and the columns are M samples.}
-\item[anno]{A N by 2 character matrix. The rows are probes but the order should be the same with the \emph{demand} matrix.  The first column can be anything (usually probe IDs) but the second column should includes Official Gene Symbol information for each probe.}
-\item[network]{A K by 4 character matrix which contains K interactions. The 1st column and the 2nd column contain pairs of interacted genes. The 3rd and 4th columns indicate whether the interactions are protein-protein interaction (ppi) or protein-DNA (pdi) interaction. Column name should be as follows: c("Gene1", "Gene2", "ppi", "pdi")}
+\item[exp]{A N-by-M numeric matrix where the rows represent N probes (or genes) and the columns represent M samples.}
+\item[anno]{A N-by-2 character matrix where the rows represent probes or genes in the same order as the \code{exp} matrix. The first column must hold the probe id or gene name as appears in the \emph{exp} matrix, and the second column should hold their corresponding names (e.g gene symbol) as appears in the \emph{network} matrix.}
+\item[network]{A K-by-L (L>1) character matrix containing K interactions. The 1st column and the 2nd column contain the names of the interacting genes. The following columns may include additional data about the interaction, but are currently ignored.}
 \item[fgIndex]{A numeric vector contains indices of columns which represent case samples (e.g. drug treated). The sample size should be greater than 3.}
 \item[bgIndex]{A numeric vector contains indices of columns which represent control samples (e.g. drug treated). The sample size should be greater than 3.}
 \end{description}

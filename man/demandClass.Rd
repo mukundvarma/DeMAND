@@ -2,13 +2,14 @@
 \alias{demandClass}
 \title{The demand class constructor}
 \usage{
-demandClass(exp, anno, network, moa)
+demandClass(exp, anno, network, moa=NULL, KLD=NULL)
 }
 \arguments{
-\item{exp}{A N by M numeric matrix and the rows are N probes and the columns are M samples.}
-\item{anno}{A N by 2 character matrix. The rows are probes but the order should be the same with the \emph{demand} matrix.  The first column can be anything (usually probe IDs) but the second column should includes Official Gene Symbol information for each probe.}
-\item{network}{A K by 4 character matrix which contains K interactions. The 1st column and the 2nd column contain pairs of interacted genes. The 3rd and 4th columns indicate whether the interactions are protein-protein interaction (ppi) or protein-DNA (pdi) interaction. Column name should be as follows: c("Gene1", "Gene2", "ppi", "pdi")}
-\item{moa}{A data frame contains DeMAND MoA predictions (e.g. Gene, p-value, adjusted p-values)}
+\item{exp}{A N-by-M numeric matrix where the rows represent N probes (or genes) and the columns represent M samples.}
+\item{anno}{A N-by-2 character matrix where the rows represent probes or genes in the same order as the \code{exp} matrix. The first column must hold the probe id or gene name as appears in the \code{exp} matrix, and the second column should hold their corresponding names (e.g gene symbol) as appears in the \code{network} matrix}
+\item{network}{A K-by-L (L>1) character matrix containing K interactions. The 1st column and the 2nd column contain the names of the interacting genes. The following columns may include additional data about the interaction, but are currently ignored}
+\item{moa}{Filled my the \code{runDeMAND} function. A data frame containing DeMAND MoA predictions (i.e. Gene, p-value, adjusted p-values)}
+\item{KLD}{Filled my the \code{runDeMAND} function. A matrix containing the interactions that were analysed, their KL-divergence, and the p-value associated with the divergenece}
 }
 \value{
 Instance of class demand

@@ -2,15 +2,17 @@
 \alias{runDeMAND}
 \title{Run DeMAND algorithm}
 \usage{
-runDeMAND(dobj, fgIndex, bgIndex)
+runDeMAND(x, fgIndex, bgIndex, verbose=TRUE, method="bandwidth")
 }
 \arguments{
-\item{dobj}{An instance of class demand which includes: a gene expression data, annotation information, and a molecular interaction network.}
+\item{x}{An instance of class demand which includes: a gene expression data, annotation information, and a molecular interaction network.}
 \item{fgIndex}{A numeric vector contains indices of columns which represent case samples (e.g. drug treated). The sample size should be greater than 3.}
 \item{bgIndex}{A numeric vector contains indices of columns which represent control samples (e.g. drug treated). The sample size should be greater than 3.}
+\item{verbose}{A boolean value (TRUE by defalut) indicating whether to print progression outputs}
+\item{method}{A string value indicating whether to evaluate the KL-divergence using grid points based on \code{'bandwidth'} (default) or on the \code{'integers'} space}
 }
 \value{
-The moa slot in a DeMAND object will be updated once DeMAND run completes. The prediction is a matrix containing a list of genes, corresponding p-value, and adjusted p-value.
+Returns a DeMAND class object holding the same exp, anno, and network slots as the input, and where the moa and KLD slots hold the results of DeMAND algorithm. The moa slot is a matrix containing a list of genes, corresponding p-value, and adjusted p-value. The KLD slot is a matrix with the gene names of the edges that were evaluated, their KL-divergence, and the p-value assigned to that divergence.
 }
 \description{
 DeMAND.
@@ -29,6 +31,7 @@ dobj <- runDeMAND(dobj, fgIndex=caseIndex, bgIndex=controlIndex)
 printDeMAND(dobj)
 ## results (all)
 print(dobj@moa)
+print(dobj@KLD)
 }
 \keyword{Action}
 \keyword{Drug}
