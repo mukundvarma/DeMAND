@@ -70,7 +70,7 @@ printDeMAND(dobj)
 Here are some information and the requirements for you to generate a \emph{demand} object and to run the \texttt{runDeMAND()} function.
 \begin{description}
 \item[exp]{A N-by-M numeric matrix where the rows represent N probes (or genes) and the columns represent M samples.}
-\item[anno]{A N-by-2 character matrix where the rows represent probes or genes in the same order as the \code{exp} matrix. The first column must hold the probe id or gene name as appears in the \emph{exp} matrix, and the second column should hold their corresponding names (e.g gene symbol) as appears in the \emph{network} matrix.}
+\item[anno]{A N-by-2 character matrix where the rows represent probes or genes in the same order as the \emph{exp} matrix. The first column must hold the probe id or gene name as appears in the \emph{exp} matrix, and the second column should hold their corresponding names (e.g gene symbol) as appears in the \emph{network} matrix.}
 \item[network]{A K-by-L (L>1) character matrix containing K interactions. The 1st column and the 2nd column contain the names of the interacting genes. The following columns may include additional data about the interaction, but are currently ignored.}
 \item[fgIndex]{A numeric vector contains indices of columns which represent case samples (e.g. drug treated). The sample size should be greater than 3.}
 \item[bgIndex]{A numeric vector contains indices of columns which represent control samples (e.g. drug treated). The sample size should be greater than 3.}
