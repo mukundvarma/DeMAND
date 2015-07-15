@@ -87,7 +87,8 @@ Here are some information and the requirements for you to generate a \emph{deman
 \bibitem{Lamb2006} Lamb, J., et al., The Connectivity Map: using gene-expression signatures to connect small molecules, genes, and disease. Science, 2006. 313(5795): p. 1929-35.
 \bibitem{Gardner2003} Gardner, T.S., et al., Inferring genetic networks and identifying compound mode of action via expression profiling. Science, 2003. 301(5629): p. 102-5.
 \bibitem{Bernardo2005} di Bernardo, D., et al., Chemogenomic profiling on a genome-wide scale using reverse-engineered gene networks. Nat Biotechnol, 2005. 23(3): p. 377-83.
-\bibitem{Woo2015} Woo, J.H., et al.,  Elucidating Compound Mechanism of Action by Network Dysregulation Analysis in Perturbed Cells. 2015. (under review)
+\bibitem{Woo2015} Woo, J.H., et al.,  Elucidating Compound Mechanism of Action
+by Network Perturbation Analysis. Cell 2015. 162(2): p. 1-11.
 \bibitem{Margolin2006} Margolin, A. A. et al. ARACNE: an algorithm for the reconstruction of gene regulatory networks in a mammalian cellular context. 2006. BMC Bioinformatics 7 Suppl 1, S7.
 \bibitem{Lefebvre2010} Lefebvre, C. et al. A human B-cell interactome identifies MYB and FOXM1 as master regulators of proliferation in germinal centers. Mol. Syst. Biol. 2010. 6, 377.
 
