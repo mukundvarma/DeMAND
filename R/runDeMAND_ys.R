@@ -28,9 +28,13 @@ runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="band
   expData <- x@exp
   if(any(is.na(expData))) stop("Expression data contains NA values")
   expAnno <- x@anno[ ,2]
-  if(any(is.na(expAnno))) stop("Annotation data contains NA values")
+  if(any(is.na(expAnno))) warning("Annotation data contains NA values")
   inputNetwork <- x@network
-  if(any(is.na(inputNetwork))) stop("The network contains NA values")
+  if(any(is.na(inputNetwork[ ,1:2]))){
+    warning("The network contains NA values, removing those lines")
+    inputNetwork <- inputNetwork[apply(inputNetwork,1,function(x) !any(is.na(x))), ]
+    x@network <- inputNetwork
+  } 
   platformGene <- unique(expAnno)
   
   vmsg <- function(x,verb=verbose){
