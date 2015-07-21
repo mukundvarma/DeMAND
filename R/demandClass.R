@@ -11,7 +11,7 @@
 #'      \item{\code{KLD}:}{Matrix containting the molecular interactions that were used for the analysis plus the KL-divergence and the p-value that was calculated}
 #'}
 #'@rdname demand-instance
-setClass("demand", representation(exp="matrix", anno="matrix", network="matrix", moa="data.frame", KLD="matrix"))
+setClass("demand", representation(exp="matrix", anno="matrix", network="matrix", moa="data.frame", KLD="data.frame"))
 
 #' The demand class constructor
 #' 
@@ -32,6 +32,6 @@ demandClass <- function(exp, anno, network, moa=NULL, KLD=NULL) {
     if (is.null(anno)) stop("This class requires an annotation of the expression data (character matrix) to be generated.")
     if (is.null(network)) stop("This class requires a network (character matrix) to be generated.")
     if (is.null(moa)) moa=data.frame()
-    if (is.null(KLD)) KLD=matrix(data=NA)
+    if (is.null(KLD)) KLD=data.frame()
     new("demand", exp=as.matrix(exp), anno=as.matrix(anno), network=as.matrix(network), moa=moa, KLD=KLD)
 }

@@ -1,4 +1,4 @@
-integratePvalues <- function(g, network, expData){
+integratePvalues <- function(g, network, expData, ppi){
   #' This function integrates the p-values of all the edges surrounding a gene using Fisher's method,
   #' and uses Brown's method to correct for correlations between the p-values.
   #' @param g the name of the gene
@@ -8,31 +8,40 @@ integratePvalues <- function(g, network, expData){
   #' @return the corrected p-value for gene g
 
   # find all the interactions involving g
-  neighborEdges<- which(rowSums(matrix(data=network[,1:2] %in% g,nrow=dim(network)[1],ncol=2))>0)
-  if(length(neighborEdges)<2)
-    return(as.numeric(network[neighborEdges,4]))
-  
+  neighborEdges<- which(network[,1] %in% g | network[,2] %in% g)
+  N <- length(neighborEdges)
+  if(N<2)
+    return(as.numeric(network[neighborEdges,4][1]))
+    # return(1)
   # calculate the Fisher method integrated chi square value
-  chiVal <- -2*sum(log(as.numeric(network[neighborEdges,4])))
+  
+  pvals <- as.numeric(as.vector(network[neighborEdges,4]))
+  pvals <- pmax(pvals,1e-20)
+  fisherChisq <- -2*sum(log(pvals))
   
   # get the expression of the neighbors to calculate correlations
-  neighborGenes <- setdiff(network[neighborEdges,1:2],g)
-  if(length(neighborGenes)<2)
+  neighborGenes <- apply(network[neighborEdges,1:2],1,function(x) setdiff(x,g))
+  if(length(unique(neighborGenes))<2)
     return(as.numeric(network[neighborEdges,4][1]))
+    # return(1)
   neighborExp <- expData[neighborGenes,]
   gExp <- expData[g,]
     
   # since we are trying to correlate esges, we estimate the residuals from a fit to gene g
-  resids <- lm(t(neighborExp)~gExp)$residuals  
+  resids <- lm(t(neighborExp)~gExp)$residuals
+  # however, for protein-protein interactions we use the original data
+  resids[ ,ppi[neighborEdges]] <- t(expData[neighborGenes, ][ppi[neighborEdges],])
   covMat <- cov(resids)
   
   # calculate the correction to Fisher's method
   covMat <- covMat[lower.tri(covMat)]
   I <- covMat<0 # Brown's method requires a different correction for positive and negative values
-  covMat[I] <- 3.27 + 0.71*covMat[I]
-  covMat[!I] <- 3.25 + 0.75*covMat[!I]
-  chiVar <- 4*length(neighborEdges) + sum(covMat)
-  dFreedom <- 8*length(neighborEdges)^2/chiVar
+  covMat[I] <- covMat[I]*(3.27 + 0.71*covMat[I])
+  covMat[!I] <- covMat[!I]*(3.25 + 0.75*covMat[!I])
+  # the correction coefficient is
+  c <- 4*N/(4*N + 2*sum(covMat))
+  dFreedom <- 2*N*c
+  correctedChisq <- fisherChisq*c
   
-  return(pchisq(q=chiVal,df=dFreedom,lower.tail=F))
+  return(pchisq(q=correctedChisq,df=dFreedom,lower.tail=F))
 }

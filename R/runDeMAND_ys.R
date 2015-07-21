@@ -21,21 +21,27 @@ runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="band
   # Parameter check
   if (is.null(fgIndex) | is.null(bgIndex)) 
     stop("Please provide sample (column of expression data) indices of case/control samples")
+  if(any(is.na(c(fgIndex,bgIndex)))){
+    warning('Case indices contain NA values. These values are ignored')
+    fgIndex <- as.vector(na.exclude(fgIndex))
+    bgIndex <- as.vector(na.exclude(bgIndex))
+  }
   if(length(fgIndex) < 3 | length(bgIndex) < 3) 
     stop("The number of samples in each class should be at least three")
   if(length(fgIndex) < 6 | length(bgIndex) < 6) 
     warning("DeMAND requires six samples (in each class) for optimal performance")
   expData <- x@exp
   if(any(is.na(expData))) stop("Expression data contains NA values")
-  expAnno <- x@anno[ ,2]
-  if(any(is.na(expAnno))) warning("Annotation data contains NA values")
+  if(any(is.infinite(x@exp))) warning("Expression data contains infinite values")
+  annot <- x@anno[ ,2]
+  if(any(is.na(annot))) warning("Annotation data contains NA values")
   inputNetwork <- x@network
   if(any(is.na(inputNetwork[ ,1:2]))){
     warning("The network contains NA values, removing those lines")
     inputNetwork <- inputNetwork[apply(inputNetwork,1,function(x) !any(is.na(x))), ]
     x@network <- inputNetwork
   } 
-  platformGene <- unique(expAnno)
+  platformGene <- unique(annot)
   
   vmsg <- function(x,verb=verbose){
     if(verb)
@@ -44,25 +50,25 @@ runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="band
   
   # To reduce the networks using genes appear in the expression data
   vmsg("Pruning the network")
-  edgesToKeep <- rowSums(matrix(inputNetwork[ ,1:2] %in% platformGene,nrow=dim(inputNetwork)[1],ncol=2))==2
-  interactome <- inputNetwork[edgesToKeep, 1:2]
+  edgesToKeep <- apply(inputNetwork[ ,1:2],1,function(gg) all(gg %in% platformGene))
+  interactome <- inputNetwork[edgesToKeep, ]
   rm(edgesToKeep)
-  analGene <- intersect(unique(as.vector(interactome)), platformGene)
-  # remove duplicate lines (for example one PPI and one PDI)
-  tempNet <- t(apply(X=interactome[,1:2],MARGIN=1,FUN=sort))
-  dups <- duplicated(tempNet)
-  interactome <- interactome[!dups,]
-  rm(tempNet,dups)
+  analGene <- intersect(unique(as.vector(interactome[ ,1:2])), platformGene)
+  # remove duplicate lines (for instance x-y and y-x)
+  interactome[,1:2] <- t(apply(interactome[,1:2],1,function(gg) c(min(gg),max(gg))))
+  dups <- duplicated(interactome)
+  interactome <- interactome[!dups,1:2]
+  ppi <- if("ppi" %in% colnames(inputNetwork)) as.numeric(inputNetwork[!dups,"ppi"])==1 else rep(F,sum(!dups))
   
   # To preprocess the expression data. if there are multiple probes for one gene, select one with the maximum coefficient of variation (CV)
   vmsg("Keeping best probe per gene")
   CV <- sqrt(rowMeans(expData^2)-rowMeans(expData)^2)/rowMeans(expData)
-  oGenes <- order(expAnno,-CV) # the minus sign is to sort from high to low in the CV
-  dups <- duplicated(expAnno[oGenes])
+  oGenes <- order(annot,-CV) # the minus sign is to sort from high to low in the CV
+  dups <- duplicated(annot[oGenes])
   expData <- expData[oGenes[!dups], ]
-  row.names(expData) <- expAnno[oGenes[!dups]]
+  row.names(expData) <- annot[oGenes[!dups]]
   expData <- expData[analGene, ]
-
+  
   # load the function that calculates 2D KL-divergence
   #source('KLD2D.r')  
   
@@ -77,18 +83,18 @@ runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="band
   # (but no less than 1K and no more than 10K)
   p1 <- sample(analGene, min(max(length(analGene),1e3),1e4), replace = T)
   p2 <- sample(analGene, min(max(length(analGene),1e3),1e4), replace = T)
-  pOut <- which(p1 == p2)
-  permuteInteractome <- cbind(p1, p2)
-  permuteInteractome <- permuteInteractome[-pOut, ]
-  permuteInteractome <- t(apply(permuteInteractome,MARGIN=1,sort))
-  permuteInteractome <- unique.array(permuteInteractome)
+  pKeep <- !(p1 == p2)
+  permuteInteractome <- cbind(p1[pKeep], p2[pKeep])
+  permuteInteractome <- t(apply(permuteInteractome,1,function(x) c(min(x),max(x))))
+  dups <- duplicated(permuteInteractome)
+  permuteInteractome <- permuteInteractome[!dups,]
   
   # get null distribution of KLD values
-  nullBgIndex <- sample(x=c(bgIndex,fgIndex),size=length(bgIndex),replace=F)
-  nullFgIndex <- setdiff(c(bgIndex,fgIndex),nullBgIndex)
+  nullBgIndex <- bgIndex#sample(x=c(bgIndex,fgIndex),size=length(bgIndex),replace=F)
+  nullFgIndex <- fgIndex#setdiff(c(bgIndex,fgIndex),nullBgIndex)
   nullKLD <- apply(permuteInteractome, 1, KLD2D, nullBgIndex, nullFgIndex, expData, method)
   
-  vmsg("Measure dysregulation of the interactionss.....")
+  vmsg("Measure dysregulation of the interactions.....")
   
   # get KLD for all edges
   KLDmat <- apply(interactome, 1, KLD2D, bgIndex, fgIndex, expData, method)
@@ -105,15 +111,16 @@ runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="band
   # To combine p-values
   vmsg("Estimate dysregulation of the genes.....")
   # source('integratePvalues.r')
-  intPval <- apply(as.matrix(analGene), 1, integratePvalues, edgeKLD,expData)
+  intPval <- apply(as.matrix(analGene), 1, integratePvalues, edgeKLD,expData,ppi)
   
   intPvalAdjustedp <- p.adjust(intPval, "fdr")
   finalPrediction <- data.frame(moaGene = analGene, Pvalue = intPval, FDR = intPvalAdjustedp)
   finalPrediction <- finalPrediction[order(intPval, decreasing = F), ]
+  rownames(finalPrediction) <- 1:dim(finalPrediction)[1]
   
   # To update moa slot in the demand object
   x@moa <- finalPrediction
-  x@KLD <- edgeKLD[order(KLDpvec),]
+  x@KLD <- as.data.frame(edgeKLD[order(KLDpvec),])
   return(x)
 }
 
