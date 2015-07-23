@@ -25,8 +25,11 @@ integratePvalues <- function(g, network, expData, ppi, keepLeaves){
   # get the expression of the neighbors to calculate correlations
   neighborGenes <- apply(network[neighborEdges,1:2],1,function(x) setdiff(x,g))
   if(length(unique(neighborGenes))<2)
-    return(as.numeric(network[neighborEdges,4][1]))
-    # return(1)
+    if (keepLeaves) {
+      return(as.numeric(network[neighborEdges,4][1]))
+    } else {
+      return(1)
+    }
   neighborExp <- expData[neighborGenes,]
   gExp <- expData[g,]
     
