@@ -2,7 +2,8 @@
 \alias{runDeMAND}
 \title{Run DeMAND algorithm}
 \usage{
-runDeMAND(x, fgIndex, bgIndex, verbose=TRUE, method="bandwidth", keepLeaves=FALSE)
+runDeMAND(x, fgIndex, bgIndex, verbose=TRUE, method="bandwidth", 
+          keepLeaves=FALSE, alpha=0.05)
 }
 \arguments{
 \item{x}{An instance of class demand which includes: a gene expression data, annotation information, and a molecular interaction network.}
@@ -11,6 +12,7 @@ runDeMAND(x, fgIndex, bgIndex, verbose=TRUE, method="bandwidth", keepLeaves=FALS
 \item{verbose}{A boolean value (TRUE by defalut) indicating whether to print progression outputs}
 \item{method}{A string value indicating whether to evaluate the KL-divergence using grid points based on \code{'bandwidth'} (default) or on the \code{'integers'} space}
 \item{keepLeaves}{A boolean value indicating whether to return a p-value for genes the have only a single neighbor in the network (default is FALSE, which returns 1 for such genes)}
+\item{alpha}{The cutoff for estimating a p-value using pareto fitting (default=0.05)}
 }
 \value{
 Returns a DeMAND class object holding the same exp, anno, and network slots as the input, and where the moa and KLD slots hold the results of DeMAND algorithm. The moa slot is a matrix containing a list of genes, corresponding p-value, and adjusted p-value. The KLD slot is a matrix with the gene names of the edges that were evaluated, their KL-divergence, and the p-value assigned to that divergence.

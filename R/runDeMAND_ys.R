@@ -5,8 +5,9 @@
 #' @param fgIndex Sample indices of Drug treated samples
 #' @param bgIndex Sample indices of DMSO treated samples
 #' @param verbose Whether to print progress text
-#' @param method how to choose the bins to evaluate the KL-divergence. The options are using intervals based on the kernel bandwidth (default) or on integer points in the data
-#' @param keepLeaves whether to provide a p-value for genes the have only a single neighbor in the network (default is FALSE)
+#' @param method How to choose the bins to evaluate the KL-divergence. The options are using intervals based on the kernel bandwidth (default) or on integer points in the data
+#' @param keepLeaves Whether to provide a p-value for genes the have only a single neighbor in the network (default is FALSE)
+#' @param alpha The cutoff for estimating a p-value using pareto fitting (default=0.05)
 #' @return Objet of class demand with updated moa slot
 #' @docType methods
 #' @examples
@@ -17,7 +18,8 @@
 #' @export
 
 
-runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="bandwidth", keepLeaves=FALSE){
+runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, 
+                       method="bandwidth", keepLeaves=FALSE, alpha=0.05){
   
   # Parameter check
   if (is.null(fgIndex) | is.null(bgIndex)) 
@@ -63,9 +65,9 @@ runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="band
   dups <- duplicated(interactome)
   interactome <- interactome[!dups, 1:2]
   ppi <- if ("ppi" %in% colnames(inputNetwork)) {
-    as.numeric(inputNetwork[!dups,"ppi"])==1 
+    as.numeric(inputNetwork[!dups, "ppi"])==1 
   } else {
-    rep(F,sum(!dups))
+    rep(F, sum(!dups))
   }
   
   # To preprocess the expression data. if there are multiple probes for one gene, 
@@ -82,21 +84,21 @@ runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="band
   #source('KLD2D.r')  
   
   # get statistical significance of the KLD value using null distribution from the randomized network
-  getKLDpvalue <- function(kld,nullKLD) {
-    rs <- sum(nullKLD >= kld)/length(nullKLD)
-    return(min(1,rs))
+  getKLDpvalue <- function(kld, nullKLD) {
+    rs <- sum(nullKLD >= kld) / length(nullKLD)
+    return(min(1, rs))
   }
   
   vmsg("Make a null distribution for KL divergence.....")
   # create a random network of the same size as the original network
   # (but no less than 1K and no more than 10K)
-  p1 <- sample(analGene, min(max(length(analGene),1e3),1e4), replace = T)
-  p2 <- sample(analGene, min(max(length(analGene),1e3),1e4), replace = T)
+  p1 <- sample(analGene, min(max(length(analGene), 1e3), 1e4), replace = T)
+  p2 <- sample(analGene, min(max(length(analGene), 1e3), 1e4), replace = T)
   pKeep <- !(p1 == p2)
   permuteInteractome <- cbind(p1[pKeep], p2[pKeep])
-  permuteInteractome <- t(apply(permuteInteractome,1,function(x) c(min(x),max(x))))
+  permuteInteractome <- t(apply(permuteInteractome, 1, function(x) c(min(x), max(x))))
   dups <- duplicated(permuteInteractome)
-  permuteInteractome <- permuteInteractome[!dups,]
+  permuteInteractome <- permuteInteractome[!dups, ]
   
   # get null distribution of KLD values
   nullBgIndex <- bgIndex#sample(x=c(bgIndex,fgIndex),size=length(bgIndex),replace=F)
@@ -110,18 +112,18 @@ runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="band
   
   # get pvalue (of KLD) for all the edges using pareto distribution of the tails
   # source('pareto.R')
-  pfit <- pareto.fit(data=nullKLD,threshold=quantile(nullKLD,probs=0.95))
-  KLDpvec <- ppareto(x=KLDmat, threshold=pfit$xmin, exponent=pfit$exponent, lower.tail=F)/20
+  pfit <- pareto.fit(data=nullKLD, threshold=quantile(nullKLD, probs=1 - alpha))
+  KLDpvec <- ppareto(x=KLDmat, threshold=pfit$xmin, exponent=pfit$exponent, lower.tail=F) * alpha
   # use the counts of the nullKLD to estimate higher p-values
-  pToReplace <- KLDmat<quantile(nullKLD,probs=0.95)
-  KLDpvec[pToReplace] <- sapply(X=KLDmat[pToReplace], FUN=function(K) getKLDpvalue(K,nullKLD))
+  pToReplace <- KLDmat < quantile(nullKLD, probs=1 - alpha)
+  KLDpvec[pToReplace] <- sapply(X=KLDmat[pToReplace], FUN=function(K) getKLDpvalue(K, nullKLD))
   edgeKLD <- cbind(interactome, KLDmat, KLDpvec)
   colnames(edgeKLD) <- c("gene1", "gene2", "KLD", "KLD.p")
   
   # To combine p-values
   vmsg("Estimate dysregulation of the genes.....")
   # source('integratePvalues.r')
-  intPval <- apply(as.matrix(analGene), 1, integratePvalues, edgeKLD,expData,ppi, keepLeaves)
+  intPval <- apply(as.matrix(analGene), 1, integratePvalues, edgeKLD, expData, ppi, keepLeaves)
   
   intPvalAdjustedp <- p.adjust(intPval, "fdr")
   finalPrediction <- data.frame(moaGene = analGene, Pvalue = intPval, FDR = intPvalAdjustedp)
@@ -130,7 +132,7 @@ runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="band
   
   # To update moa slot in the demand object
   x@moa <- finalPrediction
-  x@KLD <- as.data.frame(edgeKLD[order(KLDpvec),])
+  x@KLD <- as.data.frame(edgeKLD[order(KLDpvec), ])
   return(x)
 }
 
