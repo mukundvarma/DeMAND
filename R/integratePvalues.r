@@ -1,4 +1,4 @@
-integratePvalues <- function(g, network, expData, ppi){
+integratePvalues <- function(g, network, expData, ppi, keepLeaves){
   #' This function integrates the p-values of all the edges surrounding a gene using Fisher's method,
   #' and uses Brown's method to correct for correlations between the p-values.
   #' @param g the name of the gene
@@ -11,10 +11,13 @@ integratePvalues <- function(g, network, expData, ppi){
   neighborEdges<- which(network[,1] %in% g | network[,2] %in% g)
   N <- length(neighborEdges)
   if(N<2)
-    return(as.numeric(network[neighborEdges,4][1]))
-    # return(1)
-  # calculate the Fisher method integrated chi square value
+    if (keepLeaves) {
+      return(as.numeric(network[neighborEdges,4][1]))
+    } else {
+      return(1)
+    }
   
+  # calculate the Fisher method integrated chi square value
   pvals <- as.numeric(as.vector(network[neighborEdges,4]))
   pvals <- pmax(pvals,1e-20)
   fisherChisq <- -2*sum(log(pvals))

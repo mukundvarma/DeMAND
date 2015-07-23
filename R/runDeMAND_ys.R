@@ -5,7 +5,8 @@
 #' @param fgIndex Sample indices of Drug treated samples
 #' @param bgIndex Sample indices of DMSO treated samples
 #' @param verbose Whether to print progress text
-#' @param method Whether to evaluate the KL-divergence using at intervals based on bandwidth (default) or on integer
+#' @param method how to choose the bins to evaluate the KL-divergence. The options are using intervals based on the kernel bandwidth (default) or on integer points in the data
+#' @param keepLeaves whether to provide a p-value for genes the have only a single neighbor in the network (default is FALSE)
 #' @return Objet of class demand with updated moa slot
 #' @docType methods
 #' @examples
@@ -16,54 +17,62 @@
 #' @export
 
 
-runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="bandwidth"){
+runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="bandwidth", keepLeaves=FALSE){
   
   # Parameter check
   if (is.null(fgIndex) | is.null(bgIndex)) 
     stop("Please provide sample (column of expression data) indices of case/control samples")
-  if(any(is.na(c(fgIndex,bgIndex)))){
+  if (any(is.na(c(fgIndex, bgIndex)))){
     warning('Case indices contain NA values. These values are ignored')
     fgIndex <- as.vector(na.exclude(fgIndex))
     bgIndex <- as.vector(na.exclude(bgIndex))
   }
-  if(length(fgIndex) < 3 | length(bgIndex) < 3) 
+  if (length(fgIndex) < 3 | length(bgIndex) < 3) 
     stop("The number of samples in each class should be at least three")
-  if(length(fgIndex) < 6 | length(bgIndex) < 6) 
+  if (length(fgIndex) < 6 | length(bgIndex) < 6) 
     warning("DeMAND requires six samples (in each class) for optimal performance")
   expData <- x@exp
-  if(any(is.na(expData))) stop("Expression data contains NA values")
-  if(any(is.infinite(x@exp))) warning("Expression data contains infinite values")
+  if (any(is.na(expData))) 
+    stop("Expression data contains NA values")
+  if (any(is.infinite(x@exp))) 
+    warning("Expression data contains infinite values")
   annot <- x@anno[ ,2]
-  if(any(is.na(annot))) warning("Annotation data contains NA values")
+  if (any(is.na(annot))) 
+    warning("Annotation data contains NA values")
   inputNetwork <- x@network
-  if(any(is.na(inputNetwork[ ,1:2]))){
+  if (any(is.na(inputNetwork[, 1:2]))){
     warning("The network contains NA values, removing those lines")
-    inputNetwork <- inputNetwork[apply(inputNetwork,1,function(x) !any(is.na(x))), ]
+    inputNetwork <- inputNetwork[apply(inputNetwork, 1, function(x) !any(is.na(x))), ]
     x@network <- inputNetwork
   } 
   platformGene <- unique(annot)
   
-  vmsg <- function(x,verb=verbose){
-    if(verb)
+  vmsg <- function(x, verb=verbose){
+    if (verb)
       message(x)
   } 
   
   # To reduce the networks using genes appear in the expression data
   vmsg("Pruning the network")
-  edgesToKeep <- apply(inputNetwork[ ,1:2],1,function(gg) all(gg %in% platformGene))
+  edgesToKeep <- apply(inputNetwork[, 1:2], 1, function(gg) all(gg %in% platformGene))
   interactome <- inputNetwork[edgesToKeep, ]
   rm(edgesToKeep)
-  analGene <- intersect(unique(as.vector(interactome[ ,1:2])), platformGene)
+  analGene <- intersect(unique(as.vector(interactome[, 1:2])), platformGene)
   # remove duplicate lines (for instance x-y and y-x)
-  interactome[,1:2] <- t(apply(interactome[,1:2],1,function(gg) c(min(gg),max(gg))))
+  interactome[, 1:2] <- t(apply(interactome[,1:2], 1, function(gg) c(min(gg),max(gg))))
   dups <- duplicated(interactome)
-  interactome <- interactome[!dups,1:2]
-  ppi <- if("ppi" %in% colnames(inputNetwork)) as.numeric(inputNetwork[!dups,"ppi"])==1 else rep(F,sum(!dups))
+  interactome <- interactome[!dups, 1:2]
+  ppi <- if ("ppi" %in% colnames(inputNetwork)) {
+    as.numeric(inputNetwork[!dups,"ppi"])==1 
+  } else {
+    rep(F,sum(!dups))
+  }
   
-  # To preprocess the expression data. if there are multiple probes for one gene, select one with the maximum coefficient of variation (CV)
+  # To preprocess the expression data. if there are multiple probes for one gene, 
+  # select one with the maximum coefficient of variation (CV)
   vmsg("Keeping best probe per gene")
-  CV <- sqrt(rowMeans(expData^2)-rowMeans(expData)^2)/rowMeans(expData)
-  oGenes <- order(annot,-CV) # the minus sign is to sort from high to low in the CV
+  CV <- sqrt(rowMeans(expData ^ 2) - rowMeans(expData) ^ 2) / rowMeans(expData)
+  oGenes <- order(annot, -CV) # the minus sign is to sort from high to low in the CV
   dups <- duplicated(annot[oGenes])
   expData <- expData[oGenes[!dups], ]
   row.names(expData) <- annot[oGenes[!dups]]
@@ -104,14 +113,15 @@ runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE, method="band
   pfit <- pareto.fit(data=nullKLD,threshold=quantile(nullKLD,probs=0.95))
   KLDpvec <- ppareto(x=KLDmat, threshold=pfit$xmin, exponent=pfit$exponent, lower.tail=F)/20
   # use the counts of the nullKLD to estimate higher p-values
-  KLDpvec[is.na(KLDpvec)] <- sapply(X=KLDmat[is.na(KLDpvec)], FUN=function(K) getKLDpvalue(K,nullKLD))
+  pToReplace <- KLDmat<quantile(nullKLD,probs=0.95)
+  KLDpvec[pToReplace] <- sapply(X=KLDmat[pToReplace], FUN=function(K) getKLDpvalue(K,nullKLD))
   edgeKLD <- cbind(interactome, KLDmat, KLDpvec)
   colnames(edgeKLD) <- c("gene1", "gene2", "KLD", "KLD.p")
   
   # To combine p-values
   vmsg("Estimate dysregulation of the genes.....")
   # source('integratePvalues.r')
-  intPval <- apply(as.matrix(analGene), 1, integratePvalues, edgeKLD,expData,ppi)
+  intPval <- apply(as.matrix(analGene), 1, integratePvalues, edgeKLD,expData,ppi, keepLeaves)
   
   intPvalAdjustedp <- p.adjust(intPval, "fdr")
   finalPrediction <- data.frame(moaGene = analGene, Pvalue = intPval, FDR = intPvalAdjustedp)
