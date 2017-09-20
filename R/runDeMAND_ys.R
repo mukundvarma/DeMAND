@@ -101,8 +101,11 @@ runDeMAND <- function (x, fgIndex=NULL, bgIndex=NULL, verbose=TRUE,
   permuteInteractome <- permuteInteractome[!dups, ]
   
   # get null distribution of KLD values
-  nullBgIndex <- bgIndex#sample(x=c(bgIndex,fgIndex),size=length(bgIndex),replace=F)
-  nullFgIndex <- fgIndex#setdiff(c(bgIndex,fgIndex),nullBgIndex)
+ # nullBgIndex <- bgIndex#sample(x=c(bgIndex,fgIndex),size=length(bgIndex),replace=F)
+ # nullFgIndex <- fgIndex#setdiff(c(bgIndex,fgIndex),nullBgIndex)
+                                
+  nullBgIndex <- sample(x=c(bgIndex,fgIndex),size=length(bgIndex),replace=F)
+  nullFgIndex <- setdiff(c(bgIndex,fgIndex),nullBgIndex)
   nullKLD <- apply(permuteInteractome, 1, KLD2D, nullBgIndex, nullFgIndex, expData, method)
   
   vmsg("Measure dysregulation of the interactions.....")
