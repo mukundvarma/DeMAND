@@ -29,7 +29,8 @@ KLD2D <- function(edge, bgIndex, fgIndex, expData, method=c("integers","bandwidt
   ## debug
   print(cbind(x[fgI],y[fgI]))
   print(fgWidth)
-  print(ranges)
+  print(bgWidth)
+#  print(ranges)
   print(gridSize)
   
   fgSmooth <- bkde2D(x=cbind(x[fgI], y[fgI]), bandwidth=fgWidth, range.x=ranges, gridsize=gridSize)
